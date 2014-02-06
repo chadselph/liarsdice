@@ -9,8 +9,8 @@ data Move = Call | Bid { count :: Int, face :: Int } deriving (Show, Read, Eq)
 type Hand = [Int]
 
 data Player = Player {
-  hand :: Hand,
-  name :: String
+  name :: String,
+  hand :: Hand
   } deriving (Show, Eq)
 
 newtype PlayerCollection = PlayerCollection [Player]
@@ -67,33 +67,18 @@ rollDice :: Int -> GeneratorState Hand
 rollDice 0 = return []
 rollDice n = liftM2 (:) rollDie (rollDice (n - 1))
 
-
-
---rollDice :: Hand -> Int -> StdGen -> (Hand, StdGen)
---rollDice accum 0 g = (accum, g)
---rollDice accum count g = let (num, g') = randomR (minDie ,maxDie) g
---                             in rollDice (num:accum) (pred count) g'
-
---rollDicePlayer :: Player -> StdGen -> (Player, StdGen)
---rollDicePlayer player g = let (hand', g') = rollDice [] handsize g
---                              in (player{hand = hand'}, g')
---                              where handsize = length (hand player)
-                                      --
 rollDicePlayer :: Player -> GeneratorState Player
 rollDicePlayer player = do
   hand' <- rollDice(length (hand player))
   return $ player {hand = hand'}
-
---rollAllPlayersDice' :: [Player] -> StdGen -> ([Player], StdGen)
---rollAllPlayersDice' [] g = ([], g)
---rollAllPlayersDice' (p:ps) g = let (p', g') = rollDicePlayer p g
---                                  in let (ps', g'') = rollAllPlayersDice' ps g'
---                                         in (p':ps', g'')
+ 
 
 rollAllPlayersDice :: PlayerCollection -> StdGen -> (PlayerCollection, StdGen)
-rollAllPlayersDice = undefined
-
-
+rollAllPlayersDice (PlayerCollection players) stdGen = let
+  (players', stdGen') = runState (rollDicePlayers players) stdGen
+  in (PlayerCollection players', stdGen')
+  where rollDicePlayers [] = return []
+        rollDicePlayers (p:ps) = liftM2 (:) (rollDicePlayer p) (rollDicePlayers ps)
 
 newGame :: [Player] -> StdGen -> GameState
 newGame players stdGen = nextRound GameState {lastMove = Nothing, onesWild = True, players = PlayerCollection (cycle players), stdGen = stdGen}
